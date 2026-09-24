@@ -1,0 +1,17 @@
+# Phase B (VM, 8x V100): CUDA-Installation fuer echtes Training
+# Installation: pip install -r requirements-gpu.txt
+# Hinweis: CUDA 11.8 passt zu V100 (Compute Capability 7.0); bei Bedarf CUDA-Version
+# an die tatsaechlich auf der VM installierten Treiber anpassen.
+--extra-index-url https://download.pytorch.org/whl/cu118
+torch>=2.2
+
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+
+pandas>=2.2
+numpy>=1.26
+tasi>=0.15.4
+
+tensorboard>=2.16
+pytest>=8.0
