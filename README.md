@@ -1,5 +1,7 @@
 # DLR-UT World-Model Demo
 
+![Traffic World Model demo: playing back a real scene at the AIM Research Intersection](frontend/demo.gif)
+
 Interactive browser demo: from a briefly observed real traffic situation at the
 AIM Research Intersection in Braunschweig (DLR-UT dataset), a generative
 trajectory world model produces several plausible continuations of the scene,
