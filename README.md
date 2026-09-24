@@ -1,11 +1,12 @@
-# DLR-UT World-Model Demo
+# Traffic World Model
 
 ![Traffic World Model demo: playing back a real scene at the AIM Research Intersection](frontend/demo.gif)
 
-Interactive browser demo: from a briefly observed real traffic situation at the
-AIM Research Intersection in Braunschweig (DLR-UT dataset), a generative
-trajectory world model produces several plausible continuations of the scene,
-shown as a bird's-eye-view map animation ("Real" vs. "Generated variants").
+Interactive browser demo built on the **DLR-UT** dataset: from a briefly
+observed real traffic situation at the AIM Research Intersection in
+Braunschweig, a generative trajectory world model produces several plausible
+continuations of the scene, shown as a bird's-eye-view map animation ("Real"
+vs. "Generated variants").
 Details and background: [`plan.md`](./plan.md) (in German — the original
 project planning document).
 
