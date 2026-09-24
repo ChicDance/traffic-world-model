@@ -7,8 +7,7 @@ observed real traffic situation at the AIM Research Intersection in
 Braunschweig, a generative trajectory world model produces several plausible
 continuations of the scene, shown as a bird's-eye-view map animation ("Real"
 vs. "Generated variants").
-Details and background: [`plan.md`](./plan.md) (in German — the original
-project planning document).
+Details and background: [`plan.md`](./plan.md) (the original project planning document).
 
 This repo is deliberately split into two phases on two machines:
 
