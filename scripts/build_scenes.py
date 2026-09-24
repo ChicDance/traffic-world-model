@@ -142,6 +142,10 @@ def build_scene(
                 "agent_class": g["agent_class"].iloc[0],
                 "history": history,
                 "future": future,
+                # Median statt Mittelwert/letzter Wert: robust gegen einzelne
+                # Ausreisser in der Bounding-Box-Schaetzung (siehe Rohschema-Docstring).
+                "length": float(g["dimension_length"].median()),
+                "width": float(g["dimension_width"].median()),
             }
         )
 

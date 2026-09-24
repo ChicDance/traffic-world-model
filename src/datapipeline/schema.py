@@ -33,6 +33,11 @@ class AgentTrack:
     agent_class: AgentClass
     history: list[AgentState]
     future: list[AgentState] = field(default_factory=list)
+    # Bounding-Box-Abmessungen (Meter). Im DLR-UT-Rohdatensatz je Objekt naeherungsweise
+    # konstant (die Preprocessing-Pipeline weist bereits die Median-Groesse je Zeitstempel
+    # zu, siehe Doku Abschnitt 5.2.1) -- deshalb hier einmal pro Agent statt pro AgentState.
+    length: float | None = None
+    width: float | None = None
 
     def to_dict(self) -> dict:
         return {
@@ -40,6 +45,8 @@ class AgentTrack:
             "agent_class": self.agent_class.value,
             "history": [vars(s) for s in self.history],
             "future": [vars(s) for s in self.future],
+            "length": self.length,
+            "width": self.width,
         }
 
 

@@ -20,6 +20,8 @@ def _dict_to_scene(d: dict) -> SceneContext:
             agent_class=AgentClass(a["agent_class"]),
             history=[AgentState(**s) for s in a["history"]],
             future=[AgentState(**s) for s in a["future"]],
+            length=a.get("length"),
+            width=a.get("width"),
         )
         for a in d["agents"]
     ]
@@ -42,19 +44,24 @@ def _synthetic_scenes() -> list[SceneContext]:
     n_obs, n_fut = 8, 12
     scenes = []
 
+    # Typische Bounding-Box-Groessen (Meter), grob nach DLR-UT-Medianwerten.
+    VEHICLE_DIMS = (4.3, 1.8)
+    BICYCLE_DIMS = (1.8, 0.6)
+    PEDESTRIAN_DIMS = (0.6, 0.6)
+
     # Szene 1: Fahrzeug faehrt geradeaus, Fussgaenger quert von der Seite
-    car_hist = [AgentState(x=-20 + i * 2.0, y=0.0, vx=8.0, vy=0.0) for i in range(n_obs)]
-    car_fut = [AgentState(x=-20 + (n_obs + i) * 2.0, y=0.0, vx=8.0, vy=0.0) for i in range(n_fut)]
-    ped_hist = [AgentState(x=0.0, y=-8 + i * 0.9, vx=0.0, vy=1.4) for i in range(n_obs)]
-    ped_fut = [AgentState(x=0.0, y=-8 + (n_obs + i) * 0.9, vx=0.0, vy=1.4) for i in range(n_fut)]
+    car_hist = [AgentState(x=-20 + i * 2.0, y=0.0, vx=8.0, vy=0.0, heading=0.0) for i in range(n_obs)]
+    car_fut = [AgentState(x=-20 + (n_obs + i) * 2.0, y=0.0, vx=8.0, vy=0.0, heading=0.0) for i in range(n_fut)]
+    ped_hist = [AgentState(x=0.0, y=-8 + i * 0.9, vx=0.0, vy=1.4, heading=90.0) for i in range(n_obs)]
+    ped_fut = [AgentState(x=0.0, y=-8 + (n_obs + i) * 0.9, vx=0.0, vy=1.4, heading=90.0) for i in range(n_fut)]
     scenes.append(
         SceneContext(
             scene_id="demo-car-pedestrian",
             dt=dt,
             horizon_steps=n_fut,
             agents=[
-                AgentTrack("car-1", AgentClass.VEHICLE, car_hist, car_fut),
-                AgentTrack("ped-1", AgentClass.PEDESTRIAN, ped_hist, ped_fut),
+                AgentTrack("car-1", AgentClass.VEHICLE, car_hist, car_fut, *VEHICLE_DIMS),
+                AgentTrack("ped-1", AgentClass.PEDESTRIAN, ped_hist, ped_fut, *PEDESTRIAN_DIMS),
             ],
             map_bounds={"xmin": -25, "xmax": 25, "ymin": -12, "ymax": 12},
             lane_polygons=[[(-25, -3.5), (25, -3.5), (25, 3.5), (-25, 3.5)]],
@@ -63,21 +70,21 @@ def _synthetic_scenes() -> list[SceneContext]:
     )
 
     # Szene 2: Kreuzung mit Fahrzeug, Radfahrer, Fussgaenger
-    car_hist = [AgentState(x=-18 + i * 1.8, y=-1.5, vx=7.2, vy=0.0) for i in range(n_obs)]
-    car_fut = [AgentState(x=-18 + (n_obs + i) * 1.8, y=-1.5, vx=7.2, vy=0.0) for i in range(n_fut)]
-    bike_hist = [AgentState(x=1.5, y=-16 + i * 1.6, vx=0.0, vy=3.2) for i in range(n_obs)]
-    bike_fut = [AgentState(x=1.5, y=-16 + (n_obs + i) * 1.6, vx=0.0, vy=3.2) for i in range(n_fut)]
-    ped_hist = [AgentState(x=-6 + i * 0.6, y=6.0, vx=1.0, vy=0.0) for i in range(n_obs)]
-    ped_fut = [AgentState(x=-6 + (n_obs + i) * 0.6, y=6.0, vx=1.0, vy=0.0) for i in range(n_fut)]
+    car_hist = [AgentState(x=-18 + i * 1.8, y=-1.5, vx=7.2, vy=0.0, heading=0.0) for i in range(n_obs)]
+    car_fut = [AgentState(x=-18 + (n_obs + i) * 1.8, y=-1.5, vx=7.2, vy=0.0, heading=0.0) for i in range(n_fut)]
+    bike_hist = [AgentState(x=1.5, y=-16 + i * 1.6, vx=0.0, vy=3.2, heading=90.0) for i in range(n_obs)]
+    bike_fut = [AgentState(x=1.5, y=-16 + (n_obs + i) * 1.6, vx=0.0, vy=3.2, heading=90.0) for i in range(n_fut)]
+    ped_hist = [AgentState(x=-6 + i * 0.6, y=6.0, vx=1.0, vy=0.0, heading=0.0) for i in range(n_obs)]
+    ped_fut = [AgentState(x=-6 + (n_obs + i) * 0.6, y=6.0, vx=1.0, vy=0.0, heading=0.0) for i in range(n_fut)]
     scenes.append(
         SceneContext(
             scene_id="demo-intersection",
             dt=dt,
             horizon_steps=n_fut,
             agents=[
-                AgentTrack("car-2", AgentClass.VEHICLE, car_hist, car_fut),
-                AgentTrack("bike-1", AgentClass.BICYCLE, bike_hist, bike_fut),
-                AgentTrack("ped-2", AgentClass.PEDESTRIAN, ped_hist, ped_fut),
+                AgentTrack("car-2", AgentClass.VEHICLE, car_hist, car_fut, *VEHICLE_DIMS),
+                AgentTrack("bike-1", AgentClass.BICYCLE, bike_hist, bike_fut, *BICYCLE_DIMS),
+                AgentTrack("ped-2", AgentClass.PEDESTRIAN, ped_hist, ped_fut, *PEDESTRIAN_DIMS),
             ],
             map_bounds={"xmin": -20, "xmax": 20, "ymin": -20, "ymax": 20},
             lane_polygons=[

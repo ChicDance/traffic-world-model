@@ -10,6 +10,9 @@ const genBadge = document.getElementById("generator-badge");
 
 const VARIANT_COLORS = ["#ff5c8a", "#8a6bff", "#ffd166", "#06d6a0", "#ef476f", "#118ab2", "#c77dff", "#f4a261"];
 const CLASS_COLORS = { vehicle: "#4f8cff", bicycle: "#ffb454", pedestrian: "#4fd18b", other: "#999999" };
+// Fallback-Abmessungen (Laenge, Breite in Metern), falls eine Szene keine echten
+// DLR-UT-Bounding-Box-Werte mitliefert (z.B. synthetische Fallback-Szenen ohne Pipeline-Lauf).
+const DEFAULT_DIMS = { vehicle: [4.3, 1.8], bicycle: [1.8, 0.6], pedestrian: [0.6, 0.6], other: [1.0, 1.0] };
 
 let currentScene = null;
 let currentVariants = []; // [{variant_id, agent_futures}]
@@ -215,18 +218,43 @@ function drawVariantTrail(agent, variantId, frame, histLen) {
 function drawAgentMarker(agent, frame) {
   const point = agentPathAt(agent, frame) || agent.history[agent.history.length - 1];
   if (!point) return;
-  const [cx, cy] = transform(point.x, point.y);
   const color = CLASS_COLORS[agent.agent_class] || CLASS_COLORS.other;
 
+  // Echte Bounding-Box-Masse aus dem DLR-UT-Datensatz (dimension_length/width),
+  // statt eines gleich grossen Platzhalter-Punkts fuer jeden Agenten -- wichtig
+  // nicht nur optisch, sondern auch fuer die Interpretation der Szene (ein Lkw
+  // beansprucht deutlich mehr Raum/Kollisionsflaeche als ein Fahrrad).
+  const [defaultLength, defaultWidth] = DEFAULT_DIMS[agent.agent_class] || DEFAULT_DIMS.other;
+  const length = agent.length || defaultLength;
+  const width = agent.width || defaultWidth;
+  // yaw-Konvention laut DLR-UT-Doku: 0 Grad = Ost, gegen den Uhrzeigersinn steigend --
+  // deckt sich exakt mit unseren Weltkoordinaten (x=Easting, y=Northing), keine
+  // Vorzeichenkorrektur noetig.
+  const headingRad = ((point.heading ?? 0) * Math.PI) / 180;
+  const fx = Math.cos(headingRad);
+  const fy = Math.sin(headingRad);
+  const lx = -Math.sin(headingRad);
+  const ly = Math.cos(headingRad);
+  const hl = length / 2;
+  const hw = width / 2;
+
+  // Ecken in Weltkoordinaten bestimmen und je einzeln durch transform() schicken --
+  // da transform() affin ist (Skalierung + Verschiebung, keine eigene Rotation),
+  // ergibt sich die korrekt rotierte Bounding-Box im Canvas automatisch, ohne dass
+  // wir Canvas-Rotationskonventionen/Vorzeichen separat beruecksichtigen muessten.
+  const corners = [
+    [point.x + hl * fx + hw * lx, point.y + hl * fy + hw * ly],
+    [point.x + hl * fx - hw * lx, point.y + hl * fy - hw * ly],
+    [point.x - hl * fx - hw * lx, point.y - hl * fy - hw * ly],
+    [point.x - hl * fx + hw * lx, point.y - hl * fy + hw * ly],
+  ].map(([x, y]) => transform(x, y));
+
   ctx.fillStyle = color;
-  ctx.strokeStyle = "rgba(255,255,255,0.8)";
-  ctx.lineWidth = 1.5;
+  ctx.strokeStyle = "rgba(255,255,255,0.85)";
+  ctx.lineWidth = 1.3;
   ctx.beginPath();
-  if (agent.agent_class === "vehicle") {
-    ctx.rect(cx - 5, cy - 5, 10, 10);
-  } else {
-    ctx.arc(cx, cy, 5, 0, Math.PI * 2);
-  }
+  corners.forEach(([x, y], i) => (i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
+  ctx.closePath();
   ctx.fill();
   ctx.stroke();
 }
