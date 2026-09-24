@@ -1,90 +1,91 @@
-# DLR-UT World-Model-Demo
+# DLR-UT World-Model Demo
 
-Interaktive Browser-Demo: Aus einer kurz beobachteten realen Verkehrssituation
-an der AIM-Forschungskreuzung Braunschweig (DLR-UT-Datensatz) erzeugt ein
-generatives Trajektorien-World-Model mehrere plausible Fortsetzungen der Szene,
-dargestellt als Bird's-Eye-View-Kartenanimation ("Real" vs. "Generierte
-Varianten"). Details und Hintergrund: [`plan.md`](./plan.md).
+Interactive browser demo: from a briefly observed real traffic situation at the
+AIM research intersection in Braunschweig (DLR-UT dataset), a generative
+trajectory world model produces several plausible continuations of the scene,
+shown as a bird's-eye-view map animation ("Real" vs. "Generated variants").
+Details and background: [`plan.md`](./plan.md) (in German — the original
+project planning document).
 
-Dieses Repo ist bewusst in zwei Phasen auf zwei Maschinen aufgeteilt:
+This repo is deliberately split into two phases on two machines:
 
-- **Phase A (Laptop, kein GPU):** kompletter Code, Mock-Inferenz, App laeuft im Browser.
-- **Phase B (VM, GPU):** echtes Training, danach GENERATOR_MODE=trained.
+- **Phase A (laptop, no GPU):** complete code, mock inference, app runs in the browser.
+- **Phase B (VM, GPU):** real training, then `GENERATOR_MODE=trained`.
 
-## Phase A — lokal starten (kein GPU noetig)
+## Phase A — run locally (no GPU needed)
 
 ```bash
 python -m venv .venv
-source .venv/Scripts/activate      # Windows Git-Bash; unter cmd/PowerShell: .venv\Scripts\activate
+source .venv/Scripts/activate      # Windows Git-Bash; on cmd/PowerShell: .venv\Scripts\activate
 pip install -r requirements-cpu.txt
 
-# Optional: echte DLR-UT-Szenen extrahieren (sonst laufen synthetische Demo-Szenen)
+# Optional: extract real DLR-UT scenes (otherwise synthetic demo scenes are used)
 python scripts/build_scenes.py
 
-# Optional: echte Fahrspurgeometrie aus der OpenDRIVE-Karte der Braunschweiger
-# Innenstadtring-Strassen laden (separater Datensatz, siehe scripts/extract_opendrive_lanes.py)
+# Optional: load real lane geometry from the OpenDRIVE map of Braunschweig's
+# inner ring road (separate dataset, see scripts/extract_opendrive_lanes.py)
 python -m pip install pyxodr
 python scripts/extract_opendrive_lanes.py
 
-# Kartenhintergrund erzeugen (nutzt die OpenDRIVE-Geometrie falls vorhanden,
-# sonst Fahrspur-/Wege-Dichte aus echten Trajektorien als Fallback)
+# Generate the map background (uses the OpenDRIVE geometry if present,
+# otherwise falls back to lane/path density from real trajectories)
 python -m scripts.build_map_background
 
-# Sanity-Check des Trainingsskripts (Dummy-Daten, Sekunden, kein echtes Training)
+# Sanity-check the training script (dummy data, seconds, no real training)
 python -m src.model.train --sanity-check
 
 # Tests
 pytest
 
-# App starten
+# Start the app
 GENERATOR_MODE=mock uvicorn src.backend.app:app --reload --port 8000
 ```
 
-Danach im Browser: **http://127.0.0.1:8000**
+Then open in your browser: **http://127.0.0.1:8000**
 
-- **Play**: reale Szene abspielen (Beobachtung + reale Fortsetzung)
-- **Generiere Varianten**: ruft den `MockVariantGenerator` auf, zeigt N plausible
-  Alternativ-Fortsetzungen gestrichelt/farbig neben der realen Trajektorie
-- Szenen-Auswahl oben links; Legende unten im Stage-Bereich
+- **Play**: replay the real scene (observation + real continuation)
+- **Generate variants**: calls the `MockVariantGenerator`, shows N plausible
+  alternative continuations as dashed, colored trails next to the real trajectory
+- Scene picker top-left; legend at the bottom of the stage area
 
-## Architektur
+## Architecture
 
-- `src/datapipeline/schema.py` — gemeinsame Datenstrukturen (SceneContext, AgentTrack, Trajectory)
-- `scripts/build_scenes.py` — extrahiert Interaktionsszenen aus rohen DLR-UT-CSVs
-- `scripts/extract_opendrive_lanes.py` — laedt echte Fahrspur-Polygone aus der separaten OpenDRIVE-Karte der Braunschweiger Innenstadtring-Strassen (Zenodo DOI 10.5281/zenodo.4043193), beschraenkt auf den Szenen-Kartenausschnitt
-- `scripts/build_map_background.py` — rendert `frontend/map_background.png`: bevorzugt aus der echten OpenDRIVE-Geometrie, sonst als Fallback aus der Trajektoriendichte
-- `src/model/diffusion.py` — Trajektorien-Diffusionsmodell (Methodik nach NVlabs/CTG, siehe plan.md)
-- `src/model/train.py` — Trainingsskript (`--sanity-check` fuer Phase A, echtes Training nur Phase B)
-- `src/generator/` — austauschbare `VariantGenerator`-Schnittstelle: `MockVariantGenerator` (Phase A) und `TrainedModelVariantGenerator` (Phase B)
-- `src/backend/app.py` — FastAPI-Service, injiziert den Generator ueber `GENERATOR_MODE`
-- `frontend/` — statische BEV-UI (Vanilla JS, kein Build-Schritt noetig)
+- `src/datapipeline/schema.py` — shared data structures (SceneContext, AgentTrack, Trajectory)
+- `scripts/build_scenes.py` — extracts interaction scenes from raw DLR-UT CSVs
+- `scripts/extract_opendrive_lanes.py` — loads real lane polygons from the separate OpenDRIVE map of Braunschweig's inner ring road (Zenodo DOI 10.5281/zenodo.4043193), cropped to the scenes' map extent
+- `scripts/build_map_background.py` — renders `frontend/map_background.png`: prefers the real OpenDRIVE geometry, otherwise falls back to trajectory density
+- `src/model/diffusion.py` — trajectory diffusion model (methodology after NVlabs/CTG, see plan.md)
+- `src/model/train.py` — training script (`--sanity-check` for Phase A, real training only in Phase B)
+- `src/generator/` — swappable `VariantGenerator` interface: `MockVariantGenerator` (Phase A) and `TrainedModelVariantGenerator` (Phase B)
+- `src/backend/app.py` — FastAPI service, injects the generator via `GENERATOR_MODE`
+- `frontend/` — static BEV UI (vanilla JS, no build step needed)
 
-## VM-Anleitung (Phase B, GPU-VM mit 8x V100)
+## VM instructions (Phase B, GPU VM with 8x V100)
 
 ```bash
 git clone <repo-url> && cd traffic-world-model
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements-gpu.txt
 
-# Volle Szenen-Extraktion ueber den gesamten Datensatz (optional --all-files erweitern)
+# Full scene extraction over the entire dataset (optionally extend with --all-files)
 python scripts/build_scenes.py --max-scenes 200
 
-# Echtes Training auf einer der 8 V100 (siehe plan.md Abschnitt 3, ca. 2-6h)
+# Real training on one of the 8 V100s (see plan.md section 3, ~2-6h)
 python -m src.model.train --scenes-dir data/scenes --epochs 50 --device cuda \
     --checkpoint-out checkpoints/model.pt
 
-# App mit trainiertem Modell starten
+# Start the app with the trained model
 GENERATOR_MODE=trained CHECKPOINT_PATH=checkpoints/model.pt DEVICE=cuda \
     uvicorn src.backend.app:app --port 8000
 ```
 
-Backend, Frontend und alle Endpunkte bleiben beim Wechsel von `mock` zu `trained`
-unveraendert — es wird ausschliesslich die Umgebungsvariable `GENERATOR_MODE`
-umgestellt (siehe `src/backend/config.py`, plan.md Abschnitt 5).
+Backend, frontend, and all endpoints stay unchanged when switching from `mock`
+to `trained` — only the `GENERATOR_MODE` environment variable changes (see
+`src/backend/config.py`, plan.md section 5).
 
-## Status Phase A (Definition of Done, siehe plan.md Abschnitt 6)
+## Phase A status (definition of done, see plan.md section 6)
 
-- [x] App laeuft lokal im Browser, Play/Generate funktionieren mit `MockVariantGenerator`
-- [x] Trainingsskript geschrieben, Dummy-Sanity-Check bestanden, **nicht real trainiert**
-- [x] `requirements-gpu.txt` vorbereitet, auf dem Laptop nicht installiert/getestet
-- [x] Diese README enthaelt die VM-Anleitung fuer Phase B
+- [x] App runs locally in the browser, Play/Generate work with `MockVariantGenerator`
+- [x] Training script written, dummy sanity check passed, **not actually trained**
+- [x] `requirements-gpu.txt` prepared, not installed/tested on the laptop
+- [x] This README contains the VM instructions for Phase B

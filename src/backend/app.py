@@ -1,16 +1,16 @@
-"""FastAPI-Service fuer die Demo (siehe plan.md Abschnitt 5).
+"""FastAPI service for the demo (see plan.md section 5).
 
-Startet mit:
+Start with:
     uvicorn src.backend.app:app --reload --port 8000
 
-GENERATOR_MODE=mock (Standard, Phase A) oder GENERATOR_MODE=trained (Phase B,
-braucht einen Checkpoint) steuert, welcher VariantGenerator injiziert wird --
-diese Endpunkte selbst aendern sich dabei nicht.
+GENERATOR_MODE=mock (default, Phase A) or GENERATOR_MODE=trained (Phase B,
+needs a checkpoint) controls which VariantGenerator gets injected -- these
+endpoints themselves stay unchanged either way.
 """
 
 from __future__ import annotations
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -22,6 +22,17 @@ app = FastAPI(title="Traffic World Model Demo")
 app.add_middleware(
     CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"]
 )
+
+
+@app.middleware("http")
+async def no_cache(request: Request, call_next):
+    # StaticFiles has no cache-busting by default, and browsers happily serve a
+    # stale frontend/app.js or map_background.png from disk cache across page
+    # loads (bit us twice during development). This is a local demo, not a
+    # production CDN target, so simply disable caching everywhere.
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 scene_repo = SceneRepository(SCENES_DIR)
 generator = build_generator()
@@ -45,7 +56,7 @@ def list_scenes() -> list[dict]:
 def get_scene(scene_id: str) -> dict:
     scene = scene_repo.get(scene_id)
     if scene is None:
-        raise HTTPException(status_code=404, detail=f"Szene '{scene_id}' nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
     return scene.to_dict()
 
 
@@ -53,9 +64,9 @@ def get_scene(scene_id: str) -> dict:
 def generate_variants(scene_id: str, req: GenerateRequest) -> dict:
     scene = scene_repo.get(scene_id)
     if scene is None:
-        raise HTTPException(status_code=404, detail=f"Szene '{scene_id}' nicht gefunden")
+        raise HTTPException(status_code=404, detail=f"Scene '{scene_id}' not found")
     if not 1 <= req.n_variants <= 8:
-        raise HTTPException(status_code=400, detail="n_variants muss zwischen 1 und 8 liegen")
+        raise HTTPException(status_code=400, detail="n_variants must be between 1 and 8")
 
     variants = generator.generate(scene, req.n_variants)
     return {
